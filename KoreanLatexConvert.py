@@ -13,13 +13,13 @@ class KoreanLatexConverter:
             "C": r"{\\mathrm C}",
             "rm P": r"\\mathrm { P }",
             "rm": r"",
-            "it": r"",  # 이탤릭체 표현을 위한 매핑
+            "it": r"",
         }
 
-        # 역방향 매핑 생성 (Latex -> 한글)
+        # Latex -> 한글 수식 매핑 정의
         self.latex_to_korean = {}
         for k, v in self.korean_to_latex.items():
-            if v:  # 빈 문자열이 아닌 경우만 매핑
+            if v: 
                 self.latex_to_korean[v] = k
 
     def parse_hml_file(self, file_path):
@@ -28,7 +28,6 @@ class KoreanLatexConverter:
             tree = ET.parse(file_path)
             root = tree.getroot()
             
-            # 네임스페이스를 동적으로 찾기
             namespaces = {}
             for prefix, uri in root.nsmap.items() if hasattr(root, 'nsmap') else []:
                 namespaces[prefix] = uri
@@ -58,7 +57,6 @@ class KoreanLatexConverter:
             # 모든 방법이 실패하면 모든 텍스트 노드를 확인하여 수식 형태 찾기
             if not equations:
                 print("Not find the formula. Search for text directly")
-                # 모든 텍스트 노드 검색 (간단한 재귀 함수)
                 def find_all_text(element):
                     texts = []
                     if element.text and element.text.strip():
@@ -69,16 +67,13 @@ class KoreanLatexConverter:
                 
                 all_texts = find_all_text(root)
                 
-                # 수식 패턴이 있는지 확인 (예: { } over { } 패턴)
                 for text in all_texts:
                     if re.search(r'\{[^{}]*\}\s*over\s*\{[^{}]*\}', text):
                         result.append(text)
             else:
-                # 찾은 equation 요소에서 텍스트 추출
                 for eq in equations:
                     if hasattr(eq, 'text') and eq.text:
                         result.append(eq.text)
-                    # 자식 요소의 텍스트도 확인
                     for child in eq.findall('.//*'):
                         if hasattr(child, 'text') and child.text:
                             result.append(child.text)
@@ -91,12 +86,10 @@ class KoreanLatexConverter:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
                 
-                # 수식 패턴 찾기 (예: 'equation' 태그 사이)
                 equation_matches = re.findall(r'<equation[^>]*>(.*?)</equation>', content, re.DOTALL)
                 if equation_matches:
                     return equation_matches
                 
-                # 다른 패턴도 시도 (예: { } over { } 패턴)
                 formula_matches = re.findall(r'\{[^{}]*\}\s*over\s*\{[^{}]*\}', content)
                 if formula_matches:
                     return formula_matches
@@ -110,20 +103,17 @@ class KoreanLatexConverter:
         try:
             if not isinstance(korean_expr, str):
                 print(f"Not a string: {type(korean_expr)}")
-                return str(korean_expr)  # 문자열로 변환 시도
+                return str(korean_expr)
                 
             # 분수 변환을 위한 재귀 함수
             def process_fraction(expr):
-                # 기본 케이스: over가 없으면 종료
                 if "over" not in expr:
                     return expr
                     
-                # {A} over {B} 패턴 찾기
                 stack = []
                 i = 0
                 start_positions = []
                 
-                # 균형 잡힌 괄호 찾기
                 while i < len(expr):
                     if expr[i] == '{':
                         if not stack:  # 첫 번째 여는 괄호면 위치 기록
@@ -151,23 +141,19 @@ class KoreanLatexConverter:
                                                 stack2.append(j)
                                             elif expr[j] == '}':
                                                 stack2.pop()
-                                                if not stack2:  # 균형 잡힌 괄호 찾음
+                                                if not stack2:
                                                     second_close = j
                                                     
-                                                    # 분자와 분모 추출
                                                     numerator = expr[first_open+1:first_close]
                                                     denominator = expr[second_start+1:second_close]
                                                     
-                                                    # 분자와 분모 재귀적으로 처리
                                                     processed_num = process_fraction(numerator)
                                                     processed_denom = process_fraction(denominator)
                                                     
-                                                    # 결과 조합
                                                     before = expr[:first_open]
                                                     after = expr[second_close+1:]
                                                     result = f"{before}\\dfrac{{ {processed_num} }} {{ {processed_denom} }}{after}"
                                                     
-                                                    # 변환된 결과에 대해 다시 처리 (중첩된 over 처리)
                                                     return process_fraction(result)
                                             j += 1
                     i += 1
@@ -175,10 +161,8 @@ class KoreanLatexConverter:
                 # over가 발견되지 않았거나 처리할 수 없는 패턴
                 return expr
             
-            # 분수 패턴 처리
             processed_expr = process_fraction(korean_expr)
             
-            # 수식 내 공백 처리 (나중에 처리하기 위해 임시로 미루기)
             if isinstance(processed_expr, str):
                 # 먼저 B ^{C} 패턴을 보존하기 위한 처리
                 # 수퍼스크립트 패턴 찾기 및 임시 마커로 대체
@@ -192,8 +176,7 @@ class KoreanLatexConverter:
                 
                 # 나머지 키워드 변환 (C 포함)
                 for k, v in self.korean_to_latex.items():
-                    if k != "over":  # over는 이미 처리함
-                        # 에러 방지를 위한 타입 확인
+                    if k != "over":
                         if isinstance(processed_expr, str):
                             processed_expr = re.sub(r'\b' + re.escape(k) + r'\b', v, processed_expr)
                 
@@ -202,9 +185,7 @@ class KoreanLatexConverter:
                     marker = f"__SUPERSCRIPT_{i}__"
                     processed_expr = processed_expr.replace(marker, f"^{{{match}}}")
                 
-                # C 연산자 주변 처리 (조합 연산자로 사용될 때만)
                 processed_expr = re.sub(r'(\d+)\s*\\mathrm\s*C\s*(\d+)', r'\1 {\\mathrm C} \2', processed_expr)                            
-                # 수식 내 공백 처리
                 processed_expr = re.sub(r'\s+', ' ', processed_expr)
                 
             return processed_expr
@@ -213,7 +194,7 @@ class KoreanLatexConverter:
             import traceback
             traceback.print_exc()
             print(f"Error during conversion from Hangul to Latex : {str(e)}")
-            return str(korean_expr)  # 안전하게 문자열로 반환
+            return str(korean_expr)
     
     def latex_to_korean_convert(self, latex_expr):
         """LaTeX 수식을 한글 수식으로 변환"""
@@ -265,18 +246,14 @@ class KoreanLatexConverter:
             
             # 4. 기타 LaTeX 심볼을 한글로 변환
             for latex_pattern, korean_symbol in sorted(self.latex_to_korean.items(), key=lambda x: len(x[0]), reverse=True):
-                if latex_pattern and latex_pattern != r"\mathrm":  # mathrm은 별도 처리
-                    # 정규식 특수 문자 이스케이프 처리
+                if latex_pattern and latex_pattern != r"\mathrm": 
                     escaped_pattern = re.escape(latex_pattern)
-                    # 패턴이 있는지 확인 후 교체
                     if re.search(escaped_pattern, result):
                         result = re.sub(escaped_pattern, korean_symbol, result)
             
             # 5. 표기법 정리
-            # 중괄호 안의 공백 제거
             result = re.sub(r'\{\s+(\d+)\s+\}', r'{\1}', result)
             
-            # 남은 \left, \right 등 처리
             left_right_patterns = [
                 (r'\\left\s*\(', r'LEFT ('),
                 (r'\\right\s*\)', r'RIGHT )'),
@@ -289,17 +266,16 @@ class KoreanLatexConverter:
             
             # 6. 조합 표기 수정 (n C m 패턴)
             # {}_{n} C_{m} 패턴 처리
-            # result = re.sub(r'\{\s*\}\s*_\s*(\d+)\s*C\s*_\s*(\d+)', r'{}_{\\1} C _{\\2}', result)
             result = re.sub(r'((?:\{\s*\})?)\s*_\s*(\d+)\s*C\s*_\s*(\d+)', lambda m: f"{m.group(1)}_{m.group(2)} C _{{{m.group(3)}}}", result)
             
             # 7. mathrm 처리 - 맨 앞에 rm 추가(없는 경우)
             if '\\mathrm' in result:
-                result = re.sub(r'\\mathrm\s*\{\s*([A-Z])\s*\}', r'rm \1', result)  # \mathrm{P} 등의 패턴 처리
-                result = result.replace('\\mathrm', 'rm')   # 남은 \mathrm 제거
+                result = re.sub(r'\\mathrm\s*\{\s*([A-Z])\s*\}', r'rm \1', result)
+                result = result.replace('\\mathrm', 'rm')
             if not result.startswith('rm ') and ('over' in result or 'LEFT' in result):
                 result = 'rm ' + result
             
-            # 8. 불필요한 공백 제거
+            # 8. 불필요 공백 제거
             result = re.sub(r'\s+', ' ', result)
             result = re.sub(r'\{\s+', '{', result)
             result = re.sub(r'\s+\}', '}', result)
@@ -314,15 +290,12 @@ class KoreanLatexConverter:
     def extract_equations_from_xml(self, xml_content):
         """XML 문서에서 수식 부분 추출"""
         try:
-            # XML 파싱 시도
             try:
                 root = ET.fromstring(xml_content)
             except ET.ParseError:
-                # XML이 아니거나 파싱 오류가 있는 경우 정규식으로 시도
                 print("Failed XML parsing, Try with regular expression")
                 return self.extract_equations_with_regex(xml_content)
             
-            # 수식 태그 찾기 (여러 가능한 패턴 시도)
             equations = []
             patterns = [
                 './/equation',
@@ -347,12 +320,10 @@ class KoreanLatexConverter:
                     if eq_text and eq_text.strip():
                         result.append(eq_text)
                     
-                    # 자식 요소도 확인
                     for child in eq.findall('.//*'):
                         if child.text and child.text.strip():
                             result.append(child.text)
             
-            # 결과가 없으면 정규식으로 시도
             if not result:
                 return self.extract_equations_with_regex(xml_content)
             
@@ -365,7 +336,6 @@ class KoreanLatexConverter:
         """정규식을 사용하여 텍스트에서 수식 패턴 추출"""
         result = []
         
-        # 다양한 수식 패턴 시도
         patterns = [
             r'<equation[^>]*>(.*?)</equation>',
             r'<formula[^>]*>(.*?)</formula>',
@@ -394,13 +364,11 @@ class KoreanLatexConverter:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         content = f.read()
                 except UnicodeDecodeError:
-                    # UTF-8로 읽지 못할 경우 다른 인코딩 시도
                     with open(file_path, 'r', encoding='cp949') as f:
                         content = f.read()
                 return self.extract_equations_from_xml(content)
             else:
                 print(f"The file format is not supported : {ext}")
-                # 텍스트 파일로 간주하고 시도
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         content = f.read()
@@ -415,20 +383,18 @@ class KoreanLatexConverter:
     def find_equation_in_text(self, text):
         """일반 텍스트에서 수식 패턴 찾기"""
         patterns = [
-            r'\{[^{}]*\}\s*over\s*\{[^{}]*\}',  # 분수 패턴
-            r'rm\s+[A-Z]+\s+LEFT',  # 확률 함수 패턴
-            r'TIMES|SMALLINTER|over'  # 특수 수학 연산자
+            r'\{[^{}]*\}\s*over\s*\{[^{}]*\}',
+            r'rm\s+[A-Z]+\s+LEFT',  
+            r'TIMES|SMALLINTER|over' 
         ]
         
         results = []
         for pattern in patterns:
             matches = re.findall(pattern, text)
             if matches:
-                # 전체 문장에서 패턴 주변의 컨텍스트를 찾아 결과에 추가
                 for match in matches:
                     start_idx = text.find(match)
                     if start_idx >= 0:
-                        # 패턴 주변 50자 정도를 컨텍스트로 가져옴
                         context_start = max(0, start_idx - 50)
                         context_end = min(len(text), start_idx + len(match) + 50)
                         context = text[context_start:context_end]
@@ -436,7 +402,6 @@ class KoreanLatexConverter:
         
         return results
 
-# 예시 테스트
 def main():
     converter = KoreanLatexConverter()
     

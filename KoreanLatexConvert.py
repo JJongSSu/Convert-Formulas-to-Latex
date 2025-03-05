@@ -412,12 +412,11 @@ def main():
     korean_expr2 = "rm P LEFT ( it A SMALLINTER B ^{C} RIGHT ) = rm P LEFT ( it A RIGHT ) rm P LEFT ( it B ^{C} RIGHT ) = rm P LEFT ( it A RIGHT ) TIMES {3} over {8} = {1} over {8}"
     latex_result2 = converter.korean_to_latex_convert(korean_expr2)
     
-    print("예시 1:")
-    print("한글 수식:", korean_expr1)
-    print("변환된 LaTeX:", latex_result1)
-    print("\n예시 2:")
-    print("한글 수식:", korean_expr2)
-    print("변환된 LaTeX:", latex_result2)
+    print("\n변환 테스트:")
+    print("한글 수식 1:", korean_expr1)
+    print("변환된 LaTeX 1:", latex_result1)
+    print("\n한글 수식 2:", korean_expr2)
+    print("변환된 LaTeX 2:", latex_result2)
     
     # Latex에서 한글 수식으로 역변환 테스트
     expected_latex1 = r"\dfrac{ \dfrac{ 1 } { 3 } \times \dfrac{ 1 } { 3 } } { \dfrac{ 1 } { 3 } \times \dfrac{ 1 } { 3 } + \left ( \dfrac{ 2 } { 3 } \times \dfrac{ { } _ { 2 } {\mathrm C} _ { 1 } \times _ { 1 } {\mathrm C} _ { 1 } } { { } _ { 3 } {\mathrm C} _ { 2 } } \right ) } = \dfrac{ 1 } { 5 }"
